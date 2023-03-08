@@ -36,7 +36,7 @@ resource "coder_agent" "main" {
 
     # start postgresql
     # TODO: make this optionnal through argument
-    service postgresql start
+    sudo service postgresql start
   EOT
 }
 
@@ -125,7 +125,7 @@ resource "docker_image" "coder_image" {
   build {
     path       = "./build"
     # TODO: would be nice to have the minor python version as tag
-    tag        = ["coder-python-${var.python_version}:v0.1"]
+    tag        = ["coder-python-${var.python_version}:v0.2"]
     build_args = {
       PYTHON_VERSION = var.python_version
     }
@@ -156,7 +156,8 @@ resource "docker_container" "workspace" {
     read_only      = false
   }
   volumes {
-    container_path = "/var/lib/postgresql/data/"
+    # FIXME: this will fail if psql version changes upstream
+    container_path = "/var/lib/postgresql/13/"
     volume_name    = docker_volume.db_volume.name
     read_only      = false
   }

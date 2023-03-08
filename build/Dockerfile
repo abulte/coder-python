@@ -8,7 +8,7 @@ RUN apt-get update \
 	sudo \
 	vim \
 	wget \
-	postgresql \
+	postgresql-13 \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG USER=coder
