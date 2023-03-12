@@ -172,7 +172,7 @@ resource "docker_container" "workspace" {
   dynamic "networks_advanced" {
     for_each = docker_network.private_network
     content {
-      name = networksvalue._advanced.value.name
+      name = networks_advanced.value.name
     }
   }
   dynamic "labels" {
