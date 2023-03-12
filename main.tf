@@ -29,6 +29,29 @@ variable "workspace_envs" {
   default     = []
 }
 
+# those labels will be applied to pretty much everything
+locals {
+  common_labels = [
+    # Add labels in Docker to keep track of orphan resources.
+    {
+      label = "coder.owner"
+      value = data.coder_workspace.me.owner
+    },
+    {
+      label = "coder.owner_id"
+      value = data.coder_workspace.me.owner_id
+    },
+    {
+      label = "coder.workspace_id"
+      value = data.coder_workspace.me.id
+    },
+    {
+      label = "coder.workspace_name"
+      value = data.coder_workspace.me.name
+    }
+  ]
+}
+
 resource "docker_network" "private_network" {
   count = var.private_docker_network ? 1 : 0
   name = "network-${data.coder_workspace.me.id}"
@@ -88,7 +111,6 @@ resource "coder_app" "code-server" {
     interval  = 3
     threshold = 10
   }
-
 }
 
 resource "docker_volume" "home_volume" {
@@ -97,18 +119,12 @@ resource "docker_volume" "home_volume" {
   lifecycle {
     ignore_changes = all
   }
-  # Add labels in Docker to keep track of orphan resources.
-  labels {
-    label = "coder.owner"
-    value = data.coder_workspace.me.owner
-  }
-  labels {
-    label = "coder.owner_id"
-    value = data.coder_workspace.me.owner_id
-  }
-  labels {
-    label = "coder.workspace_id"
-    value = data.coder_workspace.me.id
+  dynamic "labels" {
+    for_each = local.common_labels
+    content {
+      label = labels.value.label
+      value = labels.value.value
+    }
   }
   labels {
     label = "coder.python_version"
@@ -156,25 +172,15 @@ resource "docker_container" "workspace" {
   dynamic "networks_advanced" {
     for_each = docker_network.private_network
     content {
-      name = networks_advanced.value.name
+      name = networksvalue._advanced.value.name
     }
   }
-  # Add labels in Docker to keep track of orphan resources.
-  labels {
-    label = "coder.owner"
-    value = data.coder_workspace.me.owner
-  }
-  labels {
-    label = "coder.owner_id"
-    value = data.coder_workspace.me.owner_id
-  }
-  labels {
-    label = "coder.workspace_id"
-    value = data.coder_workspace.me.id
-  }
-  labels {
-    label = "coder.workspace_name"
-    value = data.coder_workspace.me.name
+  dynamic "labels" {
+    for_each = local.common_labels
+    content {
+      label = labels.value.label
+      value = labels.value.value
+    }
   }
 }
 
@@ -194,4 +200,8 @@ output "coder_workspace_data" {
 
 output "docker_network_name" {
   value = var.private_docker_network ? docker_network.private_network[0].name : null
+}
+
+output "common_labels" {
+  value = local.common_labels
 }
