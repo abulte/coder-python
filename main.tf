@@ -46,6 +46,7 @@ resource "coder_agent" "main" {
 
   login_before_ready     = false
   startup_script_timeout = 180
+  # TODO: move install to docker image
   startup_script         = <<-EOT
     set -e
 
@@ -60,6 +61,17 @@ resource "coder_agent" "main" {
     curl -sSL https://install.python-poetry.org | python3 -
     sudo ln -s /home/coder/.local/bin/poetry /usr/local/bin/poetry
   EOT
+
+  # These environment variables allow you to make Git commits right away after creating a
+  # workspace. Note that they take precedence over configuration defined in ~/.gitconfig!
+  # You can remove this block if you'd prefer to configure Git manually or using
+  # dotfiles. (see docs/dotfiles.md)
+  env = {
+    GIT_AUTHOR_NAME     = "${data.coder_workspace.me.owner}"
+    GIT_COMMITTER_NAME  = "${data.coder_workspace.me.owner}"
+    GIT_AUTHOR_EMAIL    = "${data.coder_workspace.me.owner_email}"
+    GIT_COMMITTER_EMAIL = "${data.coder_workspace.me.owner_email}"
+  }
 }
 
 resource "coder_app" "code-server" {
@@ -110,19 +122,15 @@ resource "docker_volume" "home_volume" {
   }
 }
 
-resource "docker_image" "coder_image" {
-  name = "coder-python-${var.python_version}-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
-  build {
-    context    = "./build"
-    tag        = ["coder-python-${var.python_version}:v0.3"]
-    build_args = {
-      PYTHON_VERSION = var.python_version
-    }
-  }
+# cf https://github.com/abulte/coder-python-image
+data "docker_registry_image" "coder_image" {
+  name = "ghcr.io/abulte/coder-python-image:${var.python_version}"
+}
 
-  # Keep alive for other workspaces to use upon deletion
-  # TODO: look for triggers in docker template, could be interesting
-  keep_locally = true
+resource "docker_image" "coder_image" {
+  name          = data.docker_registry_image.coder_image.name
+  # update image when it changes on remote
+  pull_triggers = [data.docker_registry_image.coder_image.sha256_digest]
 }
 
 resource "docker_container" "workspace" {
