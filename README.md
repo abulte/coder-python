@@ -1,6 +1,6 @@
 ---
-name: Develop in Docker with python and postgresql
-description: Build images with a specified python version when creating a workspace, plus a postgres db
+name: Develop in Docker with python
+description: Build images with a specified python version when creating a workspace
 tags: [local, docker]
 icon: /icon/docker.png
 ---
