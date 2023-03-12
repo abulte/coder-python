@@ -99,7 +99,7 @@ resource "docker_volume" "home_volume" {
 resource "docker_image" "coder_image" {
   name = "coder-python-${var.python_version}-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   build {
-    path       = "./build"
+    context    = "./build"
     tag        = ["coder-python-${var.python_version}:v0.3"]
     build_args = {
       PYTHON_VERSION = var.python_version
@@ -113,7 +113,7 @@ resource "docker_image" "coder_image" {
 
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
-  image = docker_image.coder_image.latest
+  image = docker_image.coder_image.image_id
   # Uses lower() to avoid Docker restriction on container names.
   name = "coder-${data.coder_workspace.me.owner}-${lower(data.coder_workspace.me.name)}"
   # Hostname makes the shell more user friendly: coder@my-workspace:~$
