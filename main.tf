@@ -12,10 +12,29 @@ terraform {
   }
 }
 
-data "coder_provisioner" "me" {
+variable "python_version" {
+  description = "What python version would you like to use for your workspace?"
+  default     = "latest"
 }
 
-provider "docker" {
+variable "private_docker_network" {
+  description = "Create a private docker network?"
+  type        = bool
+  default     = false
+}
+
+variable "workspace_envs" {
+  description = "ENV vars to be injected into workspace"
+  type        = list
+  default     = []
+}
+
+resource "docker_network" "private_network" {
+  count = var.private_docker_network ? 1 : 0
+  name = "network-${data.coder_workspace.me.id}"
+}
+
+data "coder_provisioner" "me" {
 }
 
 data "coder_workspace" "me" {
@@ -58,11 +77,6 @@ resource "coder_app" "code-server" {
     threshold = 10
   }
 
-}
-
-variable "python_version" {
-  description = "What python version would you like to use for your workspace?"
-  default     = "latest"
 }
 
 resource "docker_volume" "home_volume" {
@@ -120,7 +134,7 @@ resource "docker_container" "workspace" {
   hostname = data.coder_workspace.me.name
   # Use the docker gateway if the access URL is 127.0.0.1
   entrypoint = ["sh", "-c", replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.main.token}"]
+  env        = concat(["CODER_AGENT_TOKEN=${coder_agent.main.token}"], var.workspace_envs)
   host {
     host = "host.docker.internal"
     ip   = "host-gateway"
@@ -129,6 +143,13 @@ resource "docker_container" "workspace" {
     container_path = "/home/coder/"
     volume_name    = docker_volume.home_volume.name
     read_only      = false
+  }
+  # attach to docker private network(s) if the list is not empty
+  dynamic "networks_advanced" {
+    for_each = docker_network.private_network
+    content {
+      name = networks_advanced.value.name
+    }
   }
   # Add labels in Docker to keep track of orphan resources.
   labels {
@@ -157,4 +178,12 @@ resource "coder_metadata" "container_info" {
     key   = "image"
     value = "python-${var.python_version}"
   }
+}
+
+output "coder_workspace_data" {
+  value = data.coder_workspace.me
+}
+
+output "docker_network_name" {
+  value = var.private_docker_network ? docker_network.private_network[0].name : null
 }
