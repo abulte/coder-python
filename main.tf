@@ -144,7 +144,7 @@ data "docker_registry_image" "coder_image" {
 }
 
 resource "docker_image" "coder_image" {
-  name          = data.docker_registry_image.coder_image.name
+  name          = "${data.docker_registry_image.coder_image.name}@${data.docker_registry_image.coder_image.sha256_digest}"
   # update image when it changes on remote
   pull_triggers = [data.docker_registry_image.coder_image.sha256_digest]
 }
